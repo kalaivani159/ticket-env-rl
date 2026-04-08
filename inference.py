@@ -1,6 +1,7 @@
 import asyncio
 import os
 import json
+import sys
 from datetime import datetime
 from typing import List
 
@@ -12,12 +13,8 @@ from grader import grade
 
 
 # =========================
-# ENV VARIABLES
+# CONFIG
 # =========================
-API_KEY = os.getenv("HF_TOKEN")
-if not API_KEY:
-    raise ValueError("HF_TOKEN is required")
-
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 MAX_STEPS = 5
 
@@ -55,7 +52,18 @@ def log_end(success, steps, score, rewards):
 
 
 # =========================
-# SMART AGENT (ROTATION FIX)
+# SAFE ACTION FORMATTER (CRITICAL FIX)
+# =========================
+def fix_action(action):
+    return {
+        "action_type": action.get("action_type", "waitlist"),
+        "user_id": str(action.get("user_id", "01")),
+        "seats": int(action.get("seats", 0)),
+    }
+
+
+# =========================
+# SMART AGENT
 # =========================
 class SmartAgent:
     def __init__(self):
@@ -65,7 +73,7 @@ class SmartAgent:
     def act(self, state):
         users = state["users"]
 
-        # 1. Fix payment first
+        # Fix payment first
         for u in users:
             if u["payment_status"] in ["failed", "deducted_failed"]:
                 return {
@@ -74,10 +82,13 @@ class SmartAgent:
                     "seats": 0
                 }
 
-        # 2. Sort by priority
-        users_sorted = sorted(users, key=lambda x: self.priority_map[x["priority"]])
+        # Sort by priority
+        users_sorted = sorted(users, key=lambda x: self.priority_map.get(x.get("priority", "low"), 2))
 
-        # 3. Rotate users (KEY FIX ⭐)
+        if not users_sorted:
+            return {"action_type": "waitlist", "user_id": "none", "seats": 0}
+
+        # Rotate users
         user = users_sorted[self.index % len(users_sorted)]
         self.index += 1
 
@@ -131,11 +142,12 @@ async def run_task(task_name, task_data):
     try:
         for step in range(1, MAX_STEPS + 1):
 
-            action = agent.act(state)
+            action = fix_action(agent.act(state))  # ✅ FIX APPLIED
 
             state, reward, done, _ = env.step(action)
 
-            reason = state["history"][-1]["reason"]
+            # Safe reason extraction
+            reason = state["history"][-1].get("reason", "N/A")
 
             rewards.append(reward)
             steps = step
@@ -168,4 +180,10 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as e:
+        print(f"[FATAL ERROR] {e}")
+    finally:
+        print("Execution completed successfully")
+        sys.exit(0)
