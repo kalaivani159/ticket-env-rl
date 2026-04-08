@@ -145,7 +145,7 @@ Score is normalized between **0 and 1**.
 ## 🌐 Demo
 
 👉 Hugging Face Space (UI Demo):
-* link coming soon *
+     " link coming soon "
 
 ---
 
