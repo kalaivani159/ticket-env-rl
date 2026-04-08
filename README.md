@@ -87,9 +87,13 @@ pip install -r requirements.txt
 
 ---
 
+
 ## ▶️ Run the Environment
 
 ```bash
+
+export HF_TOKEN= YOUR_HF_TOKEN
+
 python inference.py
 ```
 
