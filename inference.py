@@ -13,9 +13,12 @@ from grader import grade
 
 
 # =========================
-# CONFIG
+# ENV VARIABLES (CHECKLIST FIX)
 # =========================
-MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+API_BASE_URL = os.getenv("API_BASE_URL", "local")
+MODEL_NAME = os.getenv("MODEL_NAME", "local-model")
+HF_TOKEN = os.getenv("HF_TOKEN")
+
 MAX_STEPS = 5
 
 
@@ -52,7 +55,7 @@ def log_end(success, steps, score, rewards):
 
 
 # =========================
-# SAFE ACTION FORMATTER (CRITICAL FIX)
+# SAFE ACTION FORMATTER
 # =========================
 def fix_action(action):
     return {
@@ -142,11 +145,10 @@ async def run_task(task_name, task_data):
     try:
         for step in range(1, MAX_STEPS + 1):
 
-            action = fix_action(agent.act(state))  # ✅ FIX APPLIED
+            action = fix_action(agent.act(state))
 
             state, reward, done, _ = env.step(action)
 
-            # Safe reason extraction
             reason = state["history"][-1].get("reason", "N/A")
 
             rewards.append(reward)
